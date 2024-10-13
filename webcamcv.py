@@ -3,7 +3,6 @@ import numpy as np
 
 def dark_channel(im, size=10):
     """Computes the dark channel of the image."""
-    # Get the minimum value in a local patch for each channel
     min_channel = cv2.erode(im, np.ones((size, size)))
     dark_channel = np.min(min_channel, axis=2)
     return dark_channel
@@ -32,23 +31,35 @@ def recover_image(im, transmission, atmospheric_light, t0=0.1):
 
 def dehaze_frame(frame):
     """Dehazes a single frame."""
-    # Step 1: Compute the dark channel
     dark_channel_map = dark_channel(frame)
-
-    # Step 2: Estimate atmospheric light
     atmospheric_light = estimate_atmospheric_light(frame, dark_channel_map)
-
-    # Step 3: Estimate the transmission map
     transmission_map = transmission_estimation(frame, atmospheric_light)
-
-    # Step 4: Recover the scene radiance
     recovered_image = recover_image(frame, transmission_map, atmospheric_light)
-
     return recovered_image
+
+def outline_image(image):
+    """Applies Canny edge detection to outline the image."""
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray_image, threshold1=100, threshold2=200)
+    edges_colored = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+    outlined_image = cv2.addWeighted(image, 0.7, edges_colored, 0.3, 0)
+    return outlined_image
+
+def hough_line_detection(image):
+    """Applies Hough Line Transform to detect lines in the image."""
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray_image, 100, 200)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=50, minLineLength=100, maxLineGap=10)
+
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw the detected lines in green
+
+    return image
 
 def main():
     """Main function to capture video from the webcam and dehaze frames."""
-    # Open a connection to the webcam (0 is the default camera)
     cap = cv2.VideoCapture(1)
 
     if not cap.isOpened():
@@ -56,24 +67,26 @@ def main():
         return
 
     while True:
-        # Capture frame-by-frame
         ret, frame = cap.read()
         if not ret:
             print("Error: Failed to capture image.")
             break
 
-        # Dehaze the current frame
         dehazed_frame = dehaze_frame(frame)
+        outlined_frame = outline_image(frame)
+        outlined_dehazed_frame = outline_image(dehazed_frame)
 
-        # Display the original and dehazed frames
-        cv2.imshow("Original Image", frame)
-        cv2.imshow("Dehazed Image", dehazed_frame)
+        # Apply Hough Line Detection to the outlined frames
+        hough_frame = hough_line_detection(outlined_frame.copy())
+        hough_dehazed_frame = hough_line_detection(outlined_dehazed_frame.copy())
 
-        # Break the loop on 'q' key press
+        # Display the original, outlined, and dehazed images with Hough lines
+        cv2.imshow("Original Image with Hough Lines", hough_frame)
+        cv2.imshow("Dehazed Image with Hough Lines", hough_dehazed_frame)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    # Release the capture and close windows
     cap.release()
     cv2.destroyAllWindows()
 
