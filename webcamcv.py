@@ -45,22 +45,24 @@ def outline_image(image):
     outlined_image = cv2.addWeighted(image, 0.7, edges_colored, 0.3, 0)
     return outlined_image
 
-def hough_line_detection(image):
-    """Applies Hough Line Transform to detect lines in the image."""
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray_image, 100, 200)
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=50, minLineLength=100, maxLineGap=10)
+def enhance_contrast(image):
+    """Enhances the contrast of the image."""
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
 
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw the detected lines in green
+    # Apply CLAHE to the L-channel
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    l = clahe.apply(l)
 
-    return image
+    # Merge the channels and convert back to BGR
+    lab = cv2.merge((l, a, b))
+    enhanced_image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    
+    return enhanced_image
 
 def main():
     """Main function to capture video from the webcam and dehaze frames."""
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Error: Could not open webcam.")
@@ -76,13 +78,15 @@ def main():
         outlined_frame = outline_image(frame)
         outlined_dehazed_frame = outline_image(dehazed_frame)
 
-        # Apply Hough Line Detection to the outlined frames
-        hough_frame = hough_line_detection(outlined_frame.copy())
-        hough_dehazed_frame = hough_line_detection(outlined_dehazed_frame.copy())
+        # Apply contrast enhancement to the outlined dehazed image
+        enhanced_outlined_dehazed_frame = enhance_contrast(outlined_dehazed_frame)
 
-        # Display the original, outlined, and dehazed images with Hough lines
-        cv2.imshow("Original Image with Hough Lines", hough_frame)
-        cv2.imshow("Dehazed Image with Hough Lines", hough_dehazed_frame)
+        # Display the original, outlined, dehazed, and enhanced dehazed images
+        cv2.imshow("Original Image", frame)
+        cv2.imshow("Outlined Image", outlined_frame)
+        cv2.imshow("Dehazed Image", dehazed_frame)
+        cv2.imshow("Outlined Dehazed Image", outlined_dehazed_frame)
+        cv2.imshow("Enhanced Outlined Dehazed Image", enhanced_outlined_dehazed_frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
