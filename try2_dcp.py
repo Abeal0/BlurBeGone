@@ -74,7 +74,7 @@ def dehaze_image(image_path, output_path):
 
 
 # Example usage
-input_image_path = "C:/Users/hassa/OneDrive - Umich/Desktop/2024 HACKATHON/foggyimage.png"  # Replace with your image path
-output_image_path = "C:/Users/hassa/OneDrive - Umich/Desktop/2024 HACKATHON/dehazed_image.png"  # Replace with desired output path
+input_image_path = "C:/Users/hassa\OneDrive - Umich/Desktop/2024 HACKATHON/HackDearborn24/foggyimage.png"  # Replace with your image path
+output_image_path = "C:/Users/hassa\OneDrive - Umich/Desktop/2024 HACKATHON/HackDearborn24/dehazed_image.png"  # Replace with desired output path
 
 dehaze_image(input_image_path, output_image_path)
